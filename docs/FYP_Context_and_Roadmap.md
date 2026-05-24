@@ -17,6 +17,21 @@
 
 ---
 
+## 🧠 Core Methodology: Zero-Shot Generalization Framework
+
+A major challenge in collaborative robotics is that traditional control systems require training low-level imitation learning or reinforcement learning policies on thousands of hours of demonstrations for specific objects. If the object changes shape, shifts 5cm, or a new item is introduced, the system fails.
+
+**Nexus-XLe solves this by designing a Zero-Shot Generalization Framework:**
+1. **No Target Dataset Training**: Rather than training or fine-tuning models from scratch, we leverage pre-trained, multi-modal **foundation models** (SmolVLM2 & Florence-2) as zero-shot planners.
+2. **Open-Vocabulary Perception**: Florence-2 performs open-vocabulary object detection, text-grounding, and referring expression segmentation. It can locate and segment arbitrary, unseen objects (e.g. customized blocks, cups, tools) without needing target-specific training.
+3. **Brain-to-Motor Translation Layer**:
+   - SmolVLM2 plans the step-by-step bimanual coordination.
+   - Florence-2 grounds the physical pixel coordinates of the targets.
+   - The cyan/pink grasp overlays extract the 2D spatial pixel targets, which map directly to the robot's inverse kinematics (IK) solver to control the joints of the dual SO-101 arms.
+4. **Generalization Safety (Verification Loop)**: Since foundational models are prone to hallucinating actions or targets, the closed-loop Verification Loop checks and verifies that plan targets actually exist in the physical space, creating a safe, training-free, and generalizable collaborative environment.
+
+---
+
 ## 🎯 Project Objectives vs. Current Codebase Mapping
 
 Below is how our current Python codebase maps directly to your supervisor's core research objectives:

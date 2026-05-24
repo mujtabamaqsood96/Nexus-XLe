@@ -1,8 +1,8 @@
 # 🤖 Nexus-XLe: Bimanual VLM Robotics Perception & Planning Pipeline
 
-Nexus-XLe is a closed-loop bimanual robotic planning and perception stack designed for the **XLeRobot** platform (dual 6-DoF SO-101 robot arms). 
+Nexus-XLe is a **Zero-Shot Generalization Framework** for closed-loop bimanual robotic planning and perception, designed for the **XLeRobot** platform (dual 6-DoF SO-101 robot arms). 
 
-By combining the zero-shot reasoning capabilities of **SmolVLM2** (multimodal planning) with the spatial precision of **Florence-2** (fine-grained visual perception), Nexus-XLe translates high-level natural language instructions into safe, visually-grounded, coordinate-precise bimanual actions.
+Rather than training low-level policy networks on thousands of hours of object-specific demonstrations, Nexus-XLe leverages pre-trained multi-modal foundation models to perform generalizable, training-free bimanual manipulation. By combining the zero-shot reasoning of **SmolVLM2** (planning) with the open-vocabulary spatial precision of **Florence-2** (fine-grained perception), it translates high-level natural language instructions into safe, visually-grounded, coordinate-precise bimanual actions for arbitrary unseen objects.
 
 ---
 
