@@ -14,5 +14,5 @@ numpy
 
 # MuJoCo Simulator
 mujoco
-mujoco-viewer
+mujoco-python-viewer
 glfw
