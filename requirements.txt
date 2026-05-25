@@ -1,0 +1,18 @@
+# Core ML & Deep Learning
+torch
+torchvision
+transformers
+accelerate
+sentencepiece
+protobuf
+
+# Web UI & App
+gradio
+pillow
+requests
+numpy
+
+# MuJoCo Simulator
+mujoco
+mujoco-viewer
+glfw
