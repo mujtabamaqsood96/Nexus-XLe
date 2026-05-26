@@ -90,7 +90,9 @@ This repository contains an active prototype built with a PyTorch/CUDA-enabled e
 ### Task 3: Success Detection (Verification)
 *   **Goal**: Upload a "Before" image and an "After" image of the workspace.
 *   **Implementation**: Ask SmolVLM2: *"Compare these two images. Did the robot successfully complete [Task]?"*
+*   **Status**: Implemented in `app.py` — upload an **After Image** and enable **Task 3: Verify Success (Before vs After)**.
 
 ### Task 4: Collision Warning (Safety)
 *   **Goal**: Prevent dual-arm collisions during collaborative motion.
 *   **Implementation**: If bounding boxes for `LEFT ARM` and `RIGHT ARM` targets (or grippers) overlap significantly, print a warning and halt execution.
+*   **Status**: Implemented in `app.py` — enable **Task 4: Collision Warning (Safety)** to halt on overlapping L/R verified targets.

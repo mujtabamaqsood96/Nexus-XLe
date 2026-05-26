@@ -55,6 +55,65 @@ def check_overlap(box1, box2, threshold=0.4):
         
     return False
 
+def check_collision_risk(box1, box2, iou_threshold=0.2, containment_threshold=0.55):
+    """
+    Collision warning helper for Task 4.
+    Uses a lower IoU threshold than suppression, since arms reaching into the same
+    workspace region is risky even with modest overlap.
+    """
+    xA = max(box1[0], box2[0])
+    yA = max(box1[1], box2[1])
+    xB = min(box1[2], box2[2])
+    yB = min(box1[3], box2[3])
+
+    interArea = max(0, xB - xA) * max(0, yB - yA)
+    if interArea == 0:
+        return False
+
+    box1Area = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    box2Area = (box2[2] - box2[0]) * (box2[3] - box2[1])
+    unionArea = box1Area + box2Area - interArea
+
+    if unionArea > 0:
+        iou = interArea / float(unionArea)
+        if iou >= iou_threshold:
+            return True
+
+    min_area = min(box1Area, box2Area)
+    if min_area > 0 and (interArea / float(min_area)) >= containment_threshold:
+        return True
+
+    return False
+
+_PLAN_LINE_RE = re.compile(
+    r"^Step\s*(\d+)\s*\|\s*(LEFT ARM|RIGHT ARM|BOTH ARMS)\s*:\s*(.*?)\s*\[TARGET:\s*(.*?)\s*\]\s*$",
+    re.IGNORECASE,
+)
+
+def parse_plan_arm_targets(plan_text: str):
+    """
+    Parse SmolVLM2 plan lines into per-step target assignments.
+    Returns: {step_num: {'LEFT ARM': str|None, 'RIGHT ARM': str|None, 'BOTH ARMS': str|None}}
+    """
+    steps = {}
+    for raw_line in (plan_text or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        match = _PLAN_LINE_RE.match(line)
+        if not match:
+            continue
+
+        step_num = int(match.group(1))
+        arm = match.group(2).upper()
+        target = match.group(4).strip()
+        target_value = None if target.lower() == "none" else target
+
+        entry = steps.setdefault(step_num, {"LEFT ARM": None, "RIGHT ARM": None, "BOTH ARMS": None})
+        entry[arm] = target_value
+
+    return steps
+
 SEG_COLORS = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F39C12"]
 
 def draw_grasp_points(image: Image.Image, bbox: list, label: str) -> Image.Image:
@@ -109,6 +168,7 @@ def draw_grasp_points(image: Image.Image, bbox: list, label: str) -> Image.Image
 
 def run_pipeline(
     image: Image.Image,
+    after_image: Image.Image,
     task_text: str,
     ground_phrase: str,
     segment_phrase: str,
@@ -116,7 +176,9 @@ def run_pipeline(
     proposals_checkbox: bool,
     question_text: str,
     segment_all_checkbox: bool,
-    grasp_overlay_checkbox: bool
+    grasp_overlay_checkbox: bool,
+    success_detection_checkbox: bool,
+    collision_warning_checkbox: bool
 ):
     if image is None:
         return None, "Please upload an image first."
@@ -202,6 +264,7 @@ def run_pipeline(
     if task_text.strip():
         plan_text = planner.plan_bimanual_action(image, task_text)
         log_output.append("\nBIMANUAL PLAN:\n" + plan_text)
+        step_arm_targets = parse_plan_arm_targets(plan_text)
         
         # ==========================
         # 3. VERIFICATION LOOP
@@ -255,6 +318,7 @@ def run_pipeline(
             log_output.append("\n--- VERIFICATION LOOP ---")
             log_output.append(f"OD labels: {', '.join(known_labels) if known_labels else 'none'}")
             unique_targets = list(set(targets))
+            verified_bboxes = {}
             for target in unique_targets:
                 target_lower = target.lower().strip()
                 
@@ -271,6 +335,7 @@ def run_pipeline(
                 if evidence_match and grounded:
                     # High confidence: evidence mentions it AND grounding found it
                     log_output.append(f"✅ VERIFIED [{target}]: Confirmed by scene evidence + grounding.")
+                    verified_bboxes[target_lower] = grounding["bboxes"][0]
                     
                     # Draw green box for verified target
                     annotated_image = draw_grounding(annotated_image, grounding, f"✅ {target}", color="#00FF00")
@@ -297,6 +362,48 @@ def run_pipeline(
                 else:
                     # Not found at all
                     log_output.append(f"❌ FAILED [{target}]: Not found in the camera feed. This step is UNSAFE!")
+
+            # ==========================
+            # 4. COLLISION WARNING (Task 4)
+            # ==========================
+            if collision_warning_checkbox and step_arm_targets and verified_bboxes:
+                for step_num in sorted(step_arm_targets.keys()):
+                    left_target = step_arm_targets[step_num].get("LEFT ARM")
+                    right_target = step_arm_targets[step_num].get("RIGHT ARM")
+                    if not left_target or not right_target:
+                        continue
+
+                    lt = left_target.lower().strip()
+                    rt = right_target.lower().strip()
+                    if lt == rt:
+                        # Both arms on same object: cooperative grasp, not a collision warning
+                        continue
+
+                    left_bbox = verified_bboxes.get(lt)
+                    right_bbox = verified_bboxes.get(rt)
+                    if not left_bbox or not right_bbox:
+                        continue
+
+                    if check_collision_risk(left_bbox, right_bbox):
+                        log_output.append("\n--- TASK 4: COLLISION WARNING ---")
+                        log_output.append(
+                            f"⚠️  COLLISION RISK at Step {step_num}: "
+                            f"LEFT ARM target '{left_target}' overlaps RIGHT ARM target '{right_target}'."
+                        )
+                        log_output.append("Execution halted for safety (collision warning).")
+                        return annotated_image, "\n".join(log_output)
+
+        # ==========================
+        # 5. SUCCESS DETECTION (Task 3)
+        # ==========================
+        if success_detection_checkbox:
+            log_output.append("\n--- TASK 3: SUCCESS DETECTION ---")
+            if after_image is None:
+                log_output.append("No AFTER image provided — upload an after-state image to verify success.")
+            else:
+                after_rgb = after_image.convert("RGB")
+                verdict = planner.verify_task_success(image, after_rgb, task_text)
+                log_output.append(verdict)
             
     else:
         log_output.append("\nNo specific bimanual task requested.")
@@ -321,6 +428,7 @@ with gr.Blocks() as demo:
     with gr.Row():
         with gr.Column(scale=1):
             image_input = gr.Image(type="pil", label="Robot Camera Feed")
+            after_image_input = gr.Image(type="pil", label="After Image (Task 3: Success Detection)", value=None)
             
             # Automatically load all images from test_images/
             test_img_paths = glob.glob("test_images/*.*")
@@ -343,6 +451,8 @@ with gr.Blocks() as demo:
                 proposals_checkbox = gr.Checkbox(label="Run Region Proposals (Blind Grasping)")
                 segment_all_checkbox = gr.Checkbox(label="Pixel-Level Segmentation (All Objects)", value=False)
                 grasp_overlay_checkbox = gr.Checkbox(label="Show Bimanual Grasp Points (L/R Overlay)", value=True)
+                success_detection_checkbox = gr.Checkbox(label="Task 3: Verify Success (Before vs After)", value=False)
+                collision_warning_checkbox = gr.Checkbox(label="Task 4: Collision Warning (Safety)", value=True)
             
             with gr.Group():
                 gr.Markdown("### Ask the AI (VQA)")
@@ -361,6 +471,7 @@ with gr.Blocks() as demo:
         fn=run_pipeline,
         inputs=[
             image_input, 
+            after_image_input,
             task_input, 
             ground_input, 
             segment_input, 
@@ -368,7 +479,9 @@ with gr.Blocks() as demo:
             proposals_checkbox,
             question_input,
             segment_all_checkbox,
-            grasp_overlay_checkbox
+            grasp_overlay_checkbox,
+            success_detection_checkbox,
+            collision_warning_checkbox
         ],
         outputs=[image_output, text_output]
     )

@@ -143,6 +143,41 @@ class SmolVLMPlanner:
             return decoded.split("Assistant:")[-1].strip()
         return decoded.strip()
 
+    def _generate_with_images(
+        self,
+        images: list[Image.Image],
+        user_text: str,
+        system_text: str = None,
+        max_new_tokens: int = 512,
+    ) -> str:
+        """
+        Generate a response given multiple images (in order) plus a user text prompt.
+        """
+        if not images:
+            raise ValueError("images must be a non-empty list")
+
+        content = [{"type": "image"} for _ in images] + [{"type": "text", "text": user_text}]
+
+        messages = []
+        if system_text:
+            messages.append({"role": "system", "content": system_text})
+        messages.append({"role": "user", "content": content})
+
+        prompt = self.processor.apply_chat_template(messages, add_generation_prompt=True)
+        inputs = self.processor(text=prompt, images=images, return_tensors="pt").to(self.model.device)
+
+        with torch.no_grad():
+            generated_ids = self.model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                do_sample=False,
+            )
+
+        decoded = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        if "Assistant:" in decoded:
+            return decoded.split("Assistant:")[-1].strip()
+        return decoded.strip()
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -216,6 +251,30 @@ class SmolVLMPlanner:
             f"which face, approximate pixel location). Consider the object's orientation."
         )
         return self._generate(image, user_text, max_new_tokens=250)
+
+    def verify_task_success(
+        self,
+        before_image: Image.Image,
+        after_image: Image.Image,
+        task: str,
+    ) -> str:
+        """
+        Compare BEFORE vs AFTER images and judge whether the task succeeded.
+
+        Returns
+        -------
+        str — a short structured verdict
+        """
+        user_text = (
+            "You will be shown two images in order: BEFORE then AFTER.\n\n"
+            f"Task to verify: {task}\n\n"
+            "Decide whether the task was successfully completed.\n"
+            "Respond EXACTLY in this format:\n"
+            "RESULT: SUCCESS | FAIL | UNCERTAIN\n"
+            "EVIDENCE: <1-2 sentences describing visible changes that support your result>\n"
+            "NOTES: <optional; what to check next if UNCERTAIN>"
+        )
+        return self._generate_with_images([before_image, after_image], user_text, max_new_tokens=256)
 
     def unload(self):
         """Free GPU memory."""
