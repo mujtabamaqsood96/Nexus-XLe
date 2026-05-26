@@ -22,13 +22,15 @@ import {
 import { formatTime, formatTimestamp, formatLatency, formatFPS } from '../../utils/format';
 import { MESSAGE_TYPES } from '../../config/constants';
 
+interface TelemetrySnapshot {
+  battery: string;
+  speed: string;
+  temp: string;
+  voltage: string;
+}
+
 interface MultiTabPanelProps {
-  telemetry: {
-    battery: string;
-    speed: string;
-    temp: string;
-    voltage: string;
-  };
+  telemetry: TelemetrySnapshot;
   armAngles: Array<number | null>;
   latency: number | string | null;
   fps: number | string | null;
@@ -122,15 +124,20 @@ interface TabProps {
 }
 
 function Tab({ label, active, onClick, theme, icon }: TabProps) {
+  const activeClasses = theme === 'dark'
+    ? 'bg-blue-500/20 text-blue-200 shadow-sm border border-blue-500/30'
+    : 'bg-blue-100 text-blue-700 shadow-sm border border-blue-200';
+  const inactiveClasses = theme === 'dark'
+    ? 'text-gray-300 hover:bg-gray-700 hover:text-gray-100'
+    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700';
+
   return (
     <button
+      type="button"
+      aria-pressed={active}
       onClick={onClick}
       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-        active
-          ? 'bg-blue-100 text-blue-700 shadow-sm border border-blue-200'
-          : theme === 'dark'
-          ? 'text-gray-400 hover:bg-gray-700 hover:text-gray-200'
-          : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+        active ? activeClasses : inactiveClasses
       }`}
     >
       {icon}
@@ -140,7 +147,7 @@ function Tab({ label, active, onClick, theme, icon }: TabProps) {
 }
 
 interface TelemetryPanelProps {
-  telemetry: any;
+  telemetry: TelemetrySnapshot;
   armAngles: Array<number | null>;
   latency: number | string | null;
   fps: number | string | null;
@@ -313,6 +320,19 @@ function LogPanel({ messages, theme }: LogPanelProps) {
   };
 
   const getLogStyle = (type: SystemMessage['type']) => {
+    if (theme === 'dark') {
+      switch (type) {
+        case MESSAGE_TYPES.ERROR:
+          return 'bg-red-950/30 border-red-900/60 text-red-100';
+        case MESSAGE_TYPES.WARNING:
+          return 'bg-yellow-950/25 border-yellow-900/60 text-yellow-100';
+        case MESSAGE_TYPES.SUCCESS:
+          return 'bg-green-950/25 border-green-900/60 text-green-100';
+        default:
+          return 'bg-gray-700 border-gray-600 text-gray-100';
+      }
+    }
+
     switch (type) {
       case MESSAGE_TYPES.ERROR:
         return 'bg-red-50 border-red-200 text-red-900';
@@ -321,7 +341,7 @@ function LogPanel({ messages, theme }: LogPanelProps) {
       case MESSAGE_TYPES.SUCCESS:
         return 'bg-green-50 border-green-200 text-green-900';
       default:
-        return theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200';
+        return 'bg-gray-50 border-gray-200';
     }
   };
 
@@ -403,7 +423,7 @@ function DiagPanel({ latency, fps, socketStatus, videoStatus, theme }: DiagPanel
       case 'streaming':
         return <CheckCircle size={16} className="text-green-500" />;
       case 'disconnected':
-        return <XCircle size={16} className="text-red-500" />;
+        return <XCircle size={16} className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />;
       case 'error':
         return <AlertTriangle size={16} className="text-red-500" />;
       case 'connecting':

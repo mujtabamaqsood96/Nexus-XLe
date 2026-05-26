@@ -75,7 +75,7 @@ export function RobotVideoCanvas({
   useEffect(() => {
     if (!socket) return;
 
-    const handleVideoFrame = (data: any) => {
+    const handleVideoFrame = (data: unknown) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
@@ -86,14 +86,20 @@ export function RobotVideoCanvas({
       const logicalWidth = canvas.width / dpr;
       const logicalHeight = canvas.height / dpr;
 
-      if (data.frame) {
+      const frame = (() => {
+        if (!data || typeof data !== 'object') return null;
+        const maybeFrame = (data as { frame?: unknown }).frame;
+        return typeof maybeFrame === 'string' && maybeFrame.length > 0 ? maybeFrame : null;
+      })();
+
+      if (frame) {
         const img = new Image();
         img.onload = () => {
           ctx.clearRect(0, 0, logicalWidth, logicalHeight);
           ctx.drawImage(img, 0, 0, logicalWidth, logicalHeight);
           drawVideoOverlays(ctx, logicalWidth, logicalHeight);
         };
-        img.src = `data:image/${ENV.VIDEO_FORMAT};base64,${data.frame}`;
+        img.src = `data:image/${ENV.VIDEO_FORMAT};base64,${frame}`;
       }
     };
 
@@ -141,6 +147,8 @@ export function RobotVideoCanvas({
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full"
+          role="img"
+          aria-label="Robot camera feed"
         />
 
         <div className="absolute top-4 left-4 flex gap-3">
@@ -160,7 +168,9 @@ export function RobotVideoCanvas({
 
         <div className="absolute top-4 right-4 flex gap-2">
           <button
+            type="button"
             onClick={onToggleVideoStream}
+            aria-label={videoStatus === 'streaming' ? 'Stop video stream' : 'Start video stream'}
             className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm shadow transition-all ${
               videoStatus === 'streaming'
                 ? 'bg-red-500 hover:bg-red-600 text-white'
@@ -171,7 +181,9 @@ export function RobotVideoCanvas({
             {videoStatus === 'streaming' ? 'Stop' : 'Start'}
           </button>
           <button
+            type="button"
             onClick={onToggleRecording}
+            aria-label={recording ? 'Stop recording' : 'Start recording'}
             className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm shadow transition-all ${
               recording
                 ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
@@ -227,6 +239,7 @@ export function RobotVideoCanvas({
               <div className="text-xl font-bold mb-2">Video Stream Disconnected</div>
               <div className="text-gray-300 mb-4">Click "Start" to begin video stream</div>
               <button
+                type="button"
                 onClick={onToggleVideoStream}
                 className="flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors mx-auto"
               >
@@ -244,6 +257,7 @@ export function RobotVideoCanvas({
               <div className="text-xl font-bold mb-2">Video Stream Error</div>
               <div className="text-red-200 mb-4">Unable to connect to video stream</div>
               <button
+                type="button"
                 onClick={onToggleVideoStream}
                 className="flex items-center px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-colors mx-auto"
               >
