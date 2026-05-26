@@ -20,7 +20,7 @@ interface ArmPositions {
   angles: number[] | null;
 }
 
-export const useSocket = () => {
+export const useSocket = (keyboardSpeed: number = ENV.DEFAULT_SPEED) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [status, setStatus] = useState<SocketStatus>({
     socket: 'disconnected',
@@ -45,8 +45,13 @@ export const useSocket = () => {
   });
 
   const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
-  const continuousIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const continuousIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pressedKeysRef = useRef<Set<string>>(new Set());
+  const keyboardSpeedRef = useRef(keyboardSpeed);
+
+  useEffect(() => {
+    keyboardSpeedRef.current = keyboardSpeed;
+  }, [keyboardSpeed]);
 
 
   const addMessage = useCallback((content: string, type: SystemMessage['type'] = MESSAGE_TYPES.INFO) => {
@@ -156,7 +161,7 @@ export const useSocket = () => {
       const direction = KEY_TO_DIRECTION[primaryKey];
 
       if (direction && socket && status.socket === 'connected') {
-        socket.emit('move_command', { direction, speed: ENV.DEFAULT_SPEED });
+        socket.emit('move_command', { direction, speed: keyboardSpeedRef.current });
       }
     }, ENV.MOVEMENT_INTERVAL_MS);
   }, [socket, status.socket]);
@@ -206,6 +211,7 @@ export const useSocket = () => {
 
   useEffect(() => {
     if (status.socket === 'connected') {
+      const pressedKeysCurrent = pressedKeysRef.current;
       window.addEventListener('keydown', handleKeyDown);
       window.addEventListener('keyup', handleKeyUp);
 
@@ -218,7 +224,7 @@ export const useSocket = () => {
           continuousIntervalRef.current = null;
         }
 
-        pressedKeysRef.current.clear();
+        pressedKeysCurrent.clear();
         setPressedKeys(new Set());
       };
     }
@@ -230,7 +236,7 @@ export const useSocket = () => {
       socket.emit('ping', { timestamp, message: 'ping from client' });
       addMessage(`Sent Ping (timestamp: ${timestamp})`, MESSAGE_TYPES.INFO);
     }
-  }, [socket, status.socket]);
+  }, [socket, status.socket, addMessage]);
 
   const sendMoveCommand = useCallback((direction: string, speed = 1.0) => {
     if (socket && status.socket === 'connected') {
@@ -244,7 +250,7 @@ export const useSocket = () => {
       setStatus(prev => ({ ...prev, video: 'connecting' }));
       addMessage('Starting video stream', MESSAGE_TYPES.INFO);
     }
-  }, [socket, status.socket]);
+  }, [socket, status.socket, addMessage]);
 
   const stopVideoStream = useCallback(() => {
     if (socket && status.socket === 'connected') {
@@ -252,7 +258,7 @@ export const useSocket = () => {
       setStatus(prev => ({ ...prev, video: 'disconnected' }));
       addMessage('Stopping video stream', MESSAGE_TYPES.INFO);
     }
-  }, [socket, status.socket]);
+  }, [socket, status.socket, addMessage]);
 
   return {
     socket,

@@ -1,14 +1,14 @@
-export const formatValue = (value: any): string => {
+export const formatValue = (value: unknown): string => {
   if (value === null || value === undefined) return 'N/A';
   return String(value);
 };
 
-export const formatLatency = (latency: any): string => {
+export const formatLatency = (latency: unknown): string => {
   const value = formatValue(latency);
   return value === 'N/A' ? value : `${value}ms`;
 };
 
-export const formatFPS = (fps: any): string => {
+export const formatFPS = (fps: unknown): string => {
   const value = formatValue(fps);
   return value === 'N/A' ? value : `${value} FPS`;
 };

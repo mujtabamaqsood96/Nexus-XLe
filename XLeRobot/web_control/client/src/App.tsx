@@ -7,7 +7,29 @@ import { BottomControlConsole } from './components/features/BottomControlConsole
 import { formatValue, formatLatency } from './utils/format';
 import { STATUS_COLORS, SPEED_LEVELS } from './config/constants';
 
+const THEME_STORAGE_KEY = 'xle_theme';
+
+function getInitialTheme(): 'light' | 'dark' {
+  if (typeof window === 'undefined') return 'light';
+
+  try {
+    const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (saved === 'light' || saved === 'dark') return saved;
+  } catch {
+    // ignore
+  }
+
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
 export default function App() {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => getInitialTheme());
+  const [speedLevel, setSpeedLevel] = useState<'low' | 'medium' | 'high'>('medium');
+  const [recording, setRecording] = useState(false);
+
+  const speedMultiplier =
+    SPEED_LEVELS[speedLevel.toUpperCase() as keyof typeof SPEED_LEVELS].value;
+
   const {
     socket,
     status,
@@ -21,11 +43,7 @@ export default function App() {
     armPositions,
     pressedKeys,
     stopContinuousMovement
-  } = useSocket();
-
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [speedLevel, setSpeedLevel] = useState<'low' | 'medium' | 'high'>('medium');
-  const [recording, setRecording] = useState(false);
+  } = useSocket(speedMultiplier);
 
   const displayTelemetry = {
     battery: formatValue(realTelemetry.battery),
@@ -45,14 +63,16 @@ export default function App() {
     } else {
       document.body.classList.remove('dark');
     }
+
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // ignore
+    }
   }, [theme]);
 
   const handleQuickMove = (direction: string) => {
-    const speedMultiplier = direction === 'stop'
-      ? 0
-      : SPEED_LEVELS[speedLevel.toUpperCase() as keyof typeof SPEED_LEVELS].value;
-
-    sendMoveCommand(direction, speedMultiplier);
+    sendMoveCommand(direction, direction === 'stop' ? 0 : speedMultiplier);
   };
 
   const handleEmergencyStop = () => {
@@ -102,17 +122,17 @@ export default function App() {
               <div className="text-xs">
                 Socket: <span className="font-medium">{status.socket}</span>
               </div>
-              <div className="text-xs pl-4 border-l border-gray-200">
+              <div className="text-xs pl-4 border-l border-gray-200 dark:border-gray-700">
                 Video: <span className="font-medium">{status.video}</span>
               </div>
-              <div className="text-xs pl-4 border-l border-gray-200">
+              <div className="text-xs pl-4 border-l border-gray-200 dark:border-gray-700">
                 Latency: <span className="font-mono">{formatLatency(displayLatency)}</span>
               </div>
               {pressedKeys.size > 0 && (
-                <div className="text-xs pl-4 border-l border-green-300">
+                <div className="text-xs pl-4 border-l border-green-300 dark:border-green-900/60">
                   <div className="flex items-center gap-1">
                     <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                    <span className="text-green-600 font-medium">
+                    <span className="text-green-600 dark:text-green-300 font-medium">
                       Keys: {Array.from(pressedKeys).join(', ')}
                     </span>
                   </div>
@@ -122,6 +142,7 @@ export default function App() {
 
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
                 className={`flex items-center gap-2 px-3 py-2 rounded-md shadow-sm text-sm transition-colors ${
                   theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white/80 hover:bg-white'
@@ -140,6 +161,7 @@ export default function App() {
                 )}
               </button>
               <button 
+                type="button"
                 onClick={sendPing}
                 className={`flex items-center gap-2 px-3 py-2 rounded-md shadow-sm text-sm transition-colors ${
                   theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white/80 hover:bg-white'

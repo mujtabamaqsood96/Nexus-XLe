@@ -59,7 +59,7 @@ export function BottomControlConsole({
 
   const joystickRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
-  const movementIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const movementIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startContinuousMovement = useCallback((direction: string) => {
     if (!connected) return;
@@ -337,7 +337,7 @@ export function BottomControlConsole({
                   connected 
                     ? (theme === 'dark' ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-gray-100')
                     : 'border-gray-400 bg-gray-200 opacity-50'
-                } relative cursor-pointer select-none ${
+                } relative cursor-pointer select-none touch-none ${
                   joystickActive ? 'ring-2 ring-blue-500' : ''
                 }`}
                 onMouseDown={handleJoystickStart}
