@@ -13,7 +13,7 @@ This document contains a structured analysis of key academic publications releva
 | **Efficient VLA Survey** (Yu et al., 2025) | Embedded/Edge VLAs | **Essential** | Methodology (SmolVLM2 Selection) |
 | **VLA: Concepts & Progress** (Sapkota et al., 2025) | Embodied AI Overview | **Essential** | Literature Review (Chapters 1 & 2) |
 | **Hybrid Fault-Tolerant Control** (Urrea, 2025) | Robotics Resilience | **Very High** | Objective 4 (Mitigation / FTC Math) |
-| **Hierarchical Vision-Language** (Zhang et al., 2025) | Collaborative Task Planning | **Very High** | Objective 1 & 3 (Map-Reduce & Hierarchy) |
+| **Hierarchical Vision-Language** (Zhang et al., 2025) | Collaborative Task Planning | **Very High** | Methodology (Task Decomposition & Hierarchy) |
 | **Advances in GRPO** (Liu et al., 2026) | RL Alignment / GRPO | **Moderate** | Future Work (VLM Policy Tuning) |
 
 ---

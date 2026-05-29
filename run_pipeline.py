@@ -235,7 +235,7 @@ def run_pipeline(args):
             print(f"\n  [2/3] Bimanual Action Plan")
             print(f"  Task: \"{args.task}\"")
             print()
-            plan = planner.plan_bimanual_action(image, args.task)
+            plan = planner.plan_bimanual_action(image, args.task, scene_desc=scene_desc)
             print_plan(plan)
 
             # 2c. Grasp point suggestions

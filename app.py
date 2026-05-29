@@ -132,6 +132,18 @@ def run_pipeline(
     
     log_output = []
     
+    log_output.append("=== PIPELINE INPUTS ===")
+    log_output.append(f"Task: {task_text if task_text.strip() else '(empty)'}")
+    log_output.append(f"Ground Phrase: {ground_phrase if ground_phrase.strip() else '(empty)'}")
+    log_output.append(f"Segment Phrase: {segment_phrase if segment_phrase.strip() else '(empty)'}")
+    log_output.append(f"Question: {question_text if question_text.strip() else '(empty)'}")
+    
+    log_output.append(f"Toggle - OCR: {'ON' if ocr_checkbox else 'OFF'}")
+    log_output.append(f"Toggle - Proposals: {'ON' if proposals_checkbox else 'OFF'}")
+    log_output.append(f"Toggle - Segment All: {'ON' if segment_all_checkbox else 'OFF'}")
+    log_output.append(f"Toggle - Grasp Overlays: {'ON' if grasp_overlay_checkbox else 'OFF'}")
+    log_output.append("=======================\n")
+    
     # ==========================
     # 1. Florence-2 Perception
     # ==========================
@@ -198,9 +210,8 @@ def run_pipeline(
         log_output.append("\nQUESTION: " + question_text)
         log_output.append("ANSWER: " + textwrap.fill(answer, width=60))
     
-    # Task Plan
     if task_text.strip():
-        plan_text = planner.plan_bimanual_action(image, task_text)
+        plan_text = planner.plan_bimanual_action(image, task_text, scene_desc=scene_desc)
         log_output.append("\nBIMANUAL PLAN:\n" + plan_text)
         
         # ==========================
